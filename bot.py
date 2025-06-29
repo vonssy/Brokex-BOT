@@ -291,12 +291,16 @@ class Brokex:
                 "from": address,
                 "data": calldata,
                 "value": 0,
-                "gas": 300000,
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
                 "nonce": web3.eth.get_transaction_count(address, "pending"),
-                "chainId": web3.eth.chain_id
+                "chainId": web3.eth.chain_id,
             }
+
+            try:
+                tx["gas"] = int(web3.eth.estimate_gas(tx) * 1.2)
+            except Exception as e:
+                tx["gas"] = int(280000 * 1.2)
 
             signed_tx = web3.eth.account.sign_transaction(tx, account)
             raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
