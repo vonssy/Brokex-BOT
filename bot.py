@@ -12,8 +12,8 @@ class Brokex:
     def __init__(self) -> None:
         self.RPC_URL = "https://testnet.dplabs-internal.com"
         self.USDT_CONTRACT_ADDRESS = "0x78ac5e2d8a78a8b8e6d10c7b7274b03c10c91cef"
-        self.CLAIM_ROUTER_ADDRESS = "0x7AaFfFe358fe10074254aa5109eBe4550781B8c6"
-        self.TRADE_ROUTER_ADDRESS = "0xBb24da1F6aaA4b0Cb3ff9ae971576790BB65673C"
+        self.CLAIM_ROUTER_ADDRESS = "0x50576285BD33261DEe1aD99BF766CD8249520a58"
+        self.TRADE_ROUTER_ADDRESS = "0xf2532bE557F6de4a28a7C706139cb200B1888081"
         self.ERC20_CONTRACT_ABI = json.loads('''[
             {"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"address","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
             {"type":"function","name":"allowance","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
