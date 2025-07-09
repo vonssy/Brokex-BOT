@@ -1,6 +1,5 @@
 web3==7.11.1
 aiohttp==3.11.10
 eth-account==0.13.7
-eth-abi==5.2.0
 colorama==0.4.6
 pytz==2024.1
