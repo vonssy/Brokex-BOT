@@ -12,7 +12,8 @@ Brokex Protocol BOT
   - Auto Run With Private Proxy - `Choose 2`
   - Auto Run Without Proxy - `Choose 3`
   - Auto Claim USDT Faucet
-  - Auto Make Trade Tx
+  - Auto Make Random Trade Tx
+  - Auto Make Add Liquidity Tx
   - Multi Accounts
 
 ## Requiremnets
