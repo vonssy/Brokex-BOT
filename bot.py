@@ -55,13 +55,33 @@ class Brokex:
                 ]
             },
             {
-                "name":"depositLiquidity",
-                "type":"function",
-                "stateMutability":"nonpayable",
-                "inputs":[
+                "name": "depositLiquidity",
+                "type": "function",
+                "stateMutability": "nonpayable",
+                "inputs": [
                     { "internalType": "uint256", "name": "usdtAmount", "type": "uint256" }
                 ],
-                "outputs":[]
+                "outputs": []
+            },
+            {
+                "name": "balanceOf", 
+                "type": "function",
+                "stateMutability": "view", 
+                "inputs": [
+                    { "internalType": "address", "name": "account", "type": "address" }
+                ], 
+                "outputs": [
+                    { "internalType": "uint256", "name": "", "type": "uint256" }
+                ], 
+            },
+            {
+                "name": "withdrawLiquidity",
+                "type": "function",
+                "stateMutability": "nonpayable",
+                "inputs": [
+                    { "internalType": "uint256", "name": "lpAmount", "type":"uint256" }
+                ],
+                "outputs": []
             }
         ]
         self.pairs = [
@@ -76,8 +96,11 @@ class Brokex:
         self.used_nonce = {}
         self.trade_count = 0
         self.trade_amount = 0
-        self.add_lp_count = 0
-        self.add_lp_amount = 0
+        self.deposit_lp_count = 0
+        self.deposit_lp_amount = 0
+        self.withdraw_lp_count = 0
+        self.withdraw_lp_amount = 0
+        self.lp_option = 0
         self.min_delay = 0
         self.max_delay = 0
 
@@ -230,6 +253,22 @@ class Brokex:
             token_balance = balance / (10 ** decimals)
 
             return token_balance
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
+        
+    async def get_lp_balance(self, address: str, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+            token_contract = web3.eth.contract(address=web3.to_checksum_address(self.POOL_ROUTER_ADDRESS), abi=self.BROKEX_CONTRACT_ABI)
+            balance = token_contract.functions.balanceOf(address).call()
+
+            lp_balance = balance / (10 ** 18)
+
+            return lp_balance
         except Exception as e:
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Message :{Style.RESET_ALL}"
@@ -419,7 +458,7 @@ class Brokex:
             )
             return None, None
         
-    async def perform_add_lp(self, account: str, address: str, use_proxy: bool):
+    async def perform_deposit_lp(self, account: str, address: str, use_proxy: bool):
         try:
             web3 = await self.get_web3_with_check(address, use_proxy)
 
@@ -427,13 +466,50 @@ class Brokex:
             asset_contract = web3.eth.contract(address=web3.to_checksum_address(asset_address), abi=self.ERC20_CONTRACT_ABI)
             decimals = asset_contract.functions.decimals().call()
             
-            add_lp_amount = int(self.add_lp_amount * (10 ** decimals))
+            deposit_lp_amount = int(self.deposit_lp_amount * (10 ** decimals))
 
-            await self.approving_token(account, address, self.POOL_ROUTER_ADDRESS, asset_address, add_lp_amount, use_proxy)
+            await self.approving_token(account, address, self.POOL_ROUTER_ADDRESS, asset_address, deposit_lp_amount, use_proxy)
 
             token_contract = web3.eth.contract(address=web3.to_checksum_address(self.POOL_ROUTER_ADDRESS), abi=self.BROKEX_CONTRACT_ABI)
 
-            lp_data = token_contract.functions.depositLiquidity(add_lp_amount)
+            lp_data = token_contract.functions.depositLiquidity(deposit_lp_amount)
+            estimated_gas = lp_data.estimate_gas({"from": address})
+
+            max_priority_fee = web3.to_wei(1, "gwei")
+            max_fee = max_priority_fee
+
+            lp_tx = lp_data.build_transaction({
+                "from": address,
+                "gas": int(estimated_gas * 1.2),
+                "maxFeePerGas": int(max_fee),
+                "maxPriorityFeePerGas": int(max_priority_fee),
+                "nonce": self.used_nonce[address],
+                "chainId": web3.eth.chain_id,
+            })
+
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, lp_tx)
+            receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+
+            block_number = receipt.blockNumber
+            self.used_nonce[address] += 1
+
+            return tx_hash, block_number
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None, None
+        
+    async def perform_withdraw_lp(self, account: str, address: str, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+
+            withdraw_lp_amount = int(self.withdraw_lp_amount * (10 ** 18))
+
+            token_contract = web3.eth.contract(address=web3.to_checksum_address(self.POOL_ROUTER_ADDRESS), abi=self.BROKEX_CONTRACT_ABI)
+
+            lp_data = token_contract.functions.withdrawLiquidity(withdraw_lp_amount)
             estimated_gas = lp_data.estimate_gas({"from": address})
 
             max_priority_fee = web3.to_wei(1, "gwei")
@@ -474,6 +550,128 @@ class Brokex:
                 flush=True
             )
             await asyncio.sleep(1)
+
+    def print_trade_question(self):
+        while True:
+            try:
+                trade_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Trade Count For Each Wallet -> {Style.RESET_ALL}").strip())
+                if trade_count > 0:
+                    self.trade_count = trade_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Trade Count must be > 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
+
+        while True:
+            try:
+                trade_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Trade Amount [Min 10] -> {Style.RESET_ALL}").strip())
+                if trade_amount >= 10:
+                    self.trade_amount = trade_amount
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Trade Amount must be >= 10.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+
+    def print_lp_option_question(self):
+        while True:
+            try:
+                print(f"{Fore.GREEN + Style.BRIGHT}Choose LP Option:{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}1. Deposit Liquidity{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}2. Withdraw Liquidity{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}3. Skipped{Style.RESET_ALL}")
+                option = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3] -> {Style.RESET_ALL}").strip())
+
+                if option in [1, 2, 3]:
+                    option_type = (
+                        "Deposit Liquidity" if option == 1 else 
+                        "Withdraw Liquidity" if option == 2 else 
+                        "Skipped"
+                    )
+                    print(f"{Fore.GREEN + Style.BRIGHT}{option_type} Selected.{Style.RESET_ALL}")
+
+                    if option == 1:
+                        self.print_deposit_lp_question()
+
+                    elif option == 2:
+                        self.print_withdraw_lp_question()
+
+                    self.lp_option = option
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, or 3.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, or 3).{Style.RESET_ALL}")
+    
+    def print_deposit_lp_question(self):
+        while True:
+            try:
+                deposit_lp_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Deposit Liquidity Count For Each Wallet -> {Style.RESET_ALL}").strip())
+                if deposit_lp_count > 0:
+                    self.deposit_lp_count = deposit_lp_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Deposit Liquidity Count must be > 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
+
+        while True:
+            try:
+                deposit_lp_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Deposit Liquidity Amount -> {Style.RESET_ALL}").strip())
+                if deposit_lp_amount > 0:
+                    self.deposit_lp_amount = deposit_lp_amount
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Deposit Liquidity Amount must be > 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+
+    def print_withdraw_lp_question(self):
+        while True:
+            try:
+                withdraw_lp_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Withdraw Liquidity Count For Each Wallet -> {Style.RESET_ALL}").strip())
+                if withdraw_lp_count > 0:
+                    self.withdraw_lp_count = withdraw_lp_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Withdraw Liquidity Count must be > 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
+
+        while True:
+            try:
+                withdraw_lp_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Withdraw Liquidity Amount -> {Style.RESET_ALL}").strip())
+                if withdraw_lp_amount > 0:
+                    self.withdraw_lp_amount = withdraw_lp_amount
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Withdraw Liquidity Amount must be > 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+
+    def print_delay_question(self):
+        while True:
+            try:
+                min_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Min Delay For Each Tx -> {Style.RESET_ALL}").strip())
+                if min_delay >= 0:
+                    self.min_delay = min_delay
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Min Delay must be >= 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
+
+        while True:
+            try:
+                max_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Max Delay For Each Tx -> {Style.RESET_ALL}").strip())
+                if max_delay >= min_delay:
+                    self.max_delay = max_delay
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Max Delay must be >= Min Delay.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
         
     def print_question(self):
         while True:
@@ -481,180 +679,42 @@ class Brokex:
                 print(f"{Fore.GREEN + Style.BRIGHT}Select Option:{Style.RESET_ALL}")
                 print(f"{Fore.WHITE + Style.BRIGHT}1. Claim Faucet{Style.RESET_ALL}")
                 print(f"{Fore.WHITE + Style.BRIGHT}2. Random Trade{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}3. Add Liquidity{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}4. Run All Features{Style.RESET_ALL}")
-                option = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3/4] -> {Style.RESET_ALL}").strip())
+                print(f"{Fore.WHITE + Style.BRIGHT}3. Deposit Liquidity{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}4. Withdraw Liquidity{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}5. Run All Features{Style.RESET_ALL}")
+                option = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3/4/5] -> {Style.RESET_ALL}").strip())
 
-                if option in [1, 2, 3, 4]:
+                if option in [1, 2, 3, 4, 5]:
                     option_type = (
                         "Claim Faucet" if option == 1 else 
                         "Random Trade" if option == 2 else 
-                        "Add Liquidity" if option == 3 else 
+                        "Deposit Liquidity" if option == 3 else 
+                        "Withdraw Liquidity" if option == 4 else 
                         "Run All Features"
                     )
                     print(f"{Fore.GREEN + Style.BRIGHT}{option_type} Selected.{Style.RESET_ALL}")
                     break
                 else:
-                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, 3, or 4.{Style.RESET_ALL}")
+                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, 3, 4, or 5.{Style.RESET_ALL}")
             except ValueError:
-                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, 3, or 4).{Style.RESET_ALL}")
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, 3, 4, or 5).{Style.RESET_ALL}")
 
         if option == 2:
-            while True:
-                try:
-                    trade_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Trade Count For Each Wallet -> {Style.RESET_ALL}").strip())
-                    if trade_count > 0:
-                        self.trade_count = trade_count
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Trade Count must be > 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    trade_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Trade Amount [1 or 0.01 or 0.001, etc in decimals] -> {Style.RESET_ALL}").strip())
-                    if trade_amount > 0:
-                        self.trade_amount = trade_amount
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Trade Amount must be > 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    min_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Min Delay For Each Tx -> {Style.RESET_ALL}").strip())
-                    if min_delay >= 0:
-                        self.min_delay = min_delay
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Min Delay must be >= 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    max_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Max Delay For Each Tx -> {Style.RESET_ALL}").strip())
-                    if max_delay >= min_delay:
-                        self.max_delay = max_delay
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Max Delay must be >= Min Delay.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
-
+            self.print_trade_question()
+            self.print_delay_question()
+            
         elif option == 3:
-            while True:
-                try:
-                    add_lp_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Add Liquidity Count For Each Wallet -> {Style.RESET_ALL}").strip())
-                    if add_lp_count > 0:
-                        self.add_lp_count = add_lp_count
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Add Liquidity Count must be > 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
+            self.print_deposit_lp_question()
+            self.print_delay_question()
 
-            while True:
-                try:
-                    add_lp_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Add Liquidity Amount [1 or 0.01 or 0.001, etc in decimals] -> {Style.RESET_ALL}").strip())
-                    if add_lp_amount > 0:
-                        self.add_lp_amount = add_lp_amount
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Add Liquidity Amount must be > 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    min_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Min Delay For Each Tx -> {Style.RESET_ALL}").strip())
-                    if min_delay >= 0:
-                        self.min_delay = min_delay
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Min Delay must be >= 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    max_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Max Delay For Each Tx -> {Style.RESET_ALL}").strip())
-                    if max_delay >= min_delay:
-                        self.max_delay = max_delay
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Max Delay must be >= Min Delay.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
-        
         elif option == 4:
-            while True:
-                try:
-                    trade_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Trade Count For Each Wallet -> {Style.RESET_ALL}").strip())
-                    if trade_count > 0:
-                        self.trade_count = trade_count
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Trade Count must be > 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    trade_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Trade Amount [1 or 0.01 or 0.001, etc in decimals] -> {Style.RESET_ALL}").strip())
-                    if trade_amount > 0:
-                        self.trade_amount = trade_amount
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Trade Amount must be > 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    add_lp_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Add Liquidity Count For Each Wallet -> {Style.RESET_ALL}").strip())
-                    if add_lp_count > 0:
-                        self.add_lp_count = add_lp_count
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Add Liquidity Count must be > 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    add_lp_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Add Liquidity Amount [1 or 0.01 or 0.001, etc in decimals] -> {Style.RESET_ALL}").strip())
-                    if add_lp_amount > 0:
-                        self.add_lp_amount = add_lp_amount
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Add Liquidity Amount must be > 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    min_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Min Delay For Each Tx -> {Style.RESET_ALL}").strip())
-                    if min_delay >= 0:
-                        self.min_delay = min_delay
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Min Delay must be >= 0.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
-
-            while True:
-                try:
-                    max_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Max Delay For Each Tx -> {Style.RESET_ALL}").strip())
-                    if max_delay >= min_delay:
-                        self.max_delay = max_delay
-                        break
-                    else:
-                        print(f"{Fore.RED + Style.BRIGHT}Max Delay must be >= Min Delay.{Style.RESET_ALL}")
-                except ValueError:
-                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
+            self.print_withdraw_lp_question()
+            self.print_delay_question()
+            
+        elif option == 5:
+            self.print_trade_question()
+            self.print_lp_option_question()
+            self.print_delay_question()
 
         while True:
             try:
@@ -800,14 +860,41 @@ class Brokex:
                 f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
             )
 
-    async def process_perform_add_lp(self, account: str, address: str, use_proxy: bool):
-        tx_hash, block_number = await self.perform_add_lp(account, address, use_proxy)
+    async def process_perform_deposit_lp(self, account: str, address: str, use_proxy: bool):
+        tx_hash, block_number = await self.perform_deposit_lp(account, address, use_proxy)
         if tx_hash and block_number:
             explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
 
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
-                f"{Fore.GREEN+Style.BRIGHT} Add Liquidity Success {Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} Deposit Liquidity Success {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Block   :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Tx Hash :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Explorer:{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
+            )
+        else:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
+            )
+
+    async def process_perform_withdraw_lp(self, account: str, address: str, use_proxy: bool):
+        tx_hash, block_number = await self.perform_withdraw_lp(account, address, use_proxy)
+        if tx_hash and block_number:
+            explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} Withdraw Liquidity Success {Style.RESET_ALL}"
             )
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Block   :{Style.RESET_ALL}"
@@ -877,13 +964,13 @@ class Brokex:
             await self.print_timer()
 
     async def process_option_3(self, account: str, address: str, use_proxy: bool):
-        for i in range(self.add_lp_count):
+        for i in range(self.deposit_lp_count):
             self.log(
                 f"{Fore.GREEN+Style.BRIGHT} ●{Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT} Add LP {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} Deposit LP {Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT}{i+1}{Style.RESET_ALL}"
                 f"{Fore.MAGENTA+Style.BRIGHT} Of {Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT}{self.add_lp_count}{Style.RESET_ALL}                                   "
+                f"{Fore.WHITE+Style.BRIGHT}{self.deposit_lp_count}{Style.RESET_ALL}                                   "
             )
 
             balance = await self.get_token_balance(address, self.USDT_CONTRACT_ADDRESS, use_proxy)
@@ -894,17 +981,48 @@ class Brokex:
             )
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Amount  :{Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT} {self.add_lp_amount} USDT {Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.deposit_lp_amount} USDT {Style.RESET_ALL}"
             )
 
-            if not balance or balance <= self.add_lp_amount:
+            if not balance or balance <= self.deposit_lp_amount:
                 self.log(
                     f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
                     f"{Fore.YELLOW+Style.BRIGHT} Insufficient USDT Token Balance {Style.RESET_ALL}"
                 )
                 return
             
-            await self.process_perform_add_lp(account, address, use_proxy)
+            await self.process_perform_deposit_lp(account, address, use_proxy)
+            await self.print_timer()
+
+    async def process_option_4(self, account: str, address: str, use_proxy: bool):
+        for i in range(self.withdraw_lp_count):
+            self.log(
+                f"{Fore.GREEN+Style.BRIGHT} ●{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} Withdraw LP {Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT}{i+1}{Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT} Of {Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT}{self.withdraw_lp_count}{Style.RESET_ALL}                                   "
+            )
+
+            balance = await self.get_lp_balance(address, use_proxy)
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   LP Held :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {balance} {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Amount  :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.withdraw_lp_amount} {Style.RESET_ALL}"
+            )
+
+            if not balance or balance <= self.withdraw_lp_amount:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} Insufficient LP Tokens Held {Style.RESET_ALL}"
+                )
+                return
+            
+            await self.process_perform_withdraw_lp(account, address, use_proxy)
             await self.print_timer()
 
     async def process_accounts(self, account: str, address: str, option: int, use_proxy: bool, rotate_proxy: bool):
@@ -939,10 +1057,18 @@ class Brokex:
         elif option == 3:
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT} Add Liquidity {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} Deposit Liquidity {Style.RESET_ALL}"
             )
 
             await self.process_option_3(account, address, use_proxy)
+
+        elif option == 4:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} Withdraw Liquidity {Style.RESET_ALL}"
+            )
+
+            await self.process_option_4(account, address, use_proxy)
 
         else:
             self.log(
@@ -956,8 +1082,11 @@ class Brokex:
             await self.process_option_2(account, address, use_proxy)
             await asyncio.sleep(5)
 
-            await self.process_option_3(account, address, use_proxy)
-            await asyncio.sleep(5)
+            if self.lp_option == 1:
+                await self.process_option_3(account, address, use_proxy)
+
+            elif self.lp_option == 2:
+                await self.process_option_4(account, address, use_proxy)
 
     async def main(self):
         try:
