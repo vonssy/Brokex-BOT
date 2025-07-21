@@ -6,6 +6,7 @@ from aiohttp_socks import ProxyConnector
 from fake_useragent import FakeUserAgent
 from datetime import datetime
 import asyncio, random, json, re, os, pytz
+from colorama import init, Fore, Style
 
 # Inisialisasi colorama untuk warna terminal
 init(autoreset=True)
@@ -66,6 +67,15 @@ class Brokex:
                 "outputs": []
             },
             {
+                "name": "withdrawLiquidity",
+                "type": "function",
+                "stateMutability": "nonpayable",
+                "inputs": [
+                    { "internalType": "uint256", "name": "lpAmount", "type":"uint256" }
+                ],
+                "outputs": []
+            },
+            {
                 "name": "balanceOf", 
                 "type": "function",
                 "stateMutability": "view", 
@@ -75,15 +85,6 @@ class Brokex:
                 "outputs": [
                     { "internalType": "uint256", "name": "", "type": "uint256" }
                 ], 
-            },
-            {
-                "name": "withdrawLiquidity",
-                "type": "function",
-                "stateMutability": "nonpayable",
-                "inputs": [
-                    { "internalType": "uint256", "name": "lpAmount", "type":"uint256" }
-                ],
-                "outputs": []
             }
         ]
         self.pairs = [
@@ -164,7 +165,8 @@ class Brokex:
 
     def check_proxy_schemes(self, proxies):
         schemes = ["http://", "https://", "socks4://", "socks5://"]
-        if any(proxies.startswith(scheme) for scheme in schemes:
+        # Perbaikan di sini: tambahkan tanda kurung penutup
+        if any(proxies.startswith(scheme) for scheme in schemes):
             return proxies
         return f"http://{proxies}"
 
@@ -601,7 +603,7 @@ class Brokex:
                 else:
                     print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, or 3.{Style.RESET_ALL}")
             except ValueError:
-                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, or 3).{Style.RESET_ALL}")
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2 or 3).{Style.RESET_ALL}")
     
     def print_deposit_lp_question(self):
         while True:
@@ -696,7 +698,7 @@ class Brokex:
                 else:
                     print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, 3, 4, or 5.{Style.RESET_ALL}")
             except ValueError:
-                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, 3, 4, or 5).{Style.RESET_ALL}")
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, 3, 4 or 5).{Style.RESET_ALL}")
 
         if option == 2:
             self.print_trade_question()
