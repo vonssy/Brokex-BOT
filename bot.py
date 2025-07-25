@@ -24,8 +24,9 @@ class Brokex:
         }
         self.BASE_API = "https://proofcrypto-production.up.railway.app"
         self.RPC_URL = "https://api.zan.top/node/v1/pharos/testnet/54b49326c9f44b6e8730dc5dd4348421"
+        self.PHRS_CONTRACT_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
         self.USDT_CONTRACT_ADDRESS = "0x78ac5e2d8a78a8b8e6d10c7b7274b03c10c91cef"
-        self.CLAIM_ROUTER_ADDRESS = "0x50576285BD33261DEe1aD99BF766CD8249520a58"
+        self.FAUCET_ROUTER_ADDRESS = "0x50576285BD33261DEe1aD99BF766CD8249520a58"
         self.TRADE_ROUTER_ADDRESS = "0xDe897635870b3Dd2e097C09f1cd08841DBc3976a"
         self.POOL_ROUTER_ADDRESS = "0x9A88d07850723267DB386C681646217Af7e220d7"
         self.ERC20_CONTRACT_ABI = json.loads('''[
@@ -293,7 +294,7 @@ class Brokex:
         try:
             web3 = await self.get_web3_with_check(address, use_proxy)
 
-            if contract_address == "PHRS":
+            if contract_address == self.PHRS_CONTRACT_ADDRESS:
                 balance = web3.eth.get_balance(address)
                 decimals = 18
             else:
@@ -377,7 +378,10 @@ class Brokex:
             except TransactionNotFound:
                 pass
             except Exception as e:
-                pass
+                self.log(
+                    f"{Fore.CYAN + Style.BRIGHT}   Message :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW + Style.BRIGHT} [Attempt {attempt + 1}] Send TX Error: {str(e)} {Style.RESET_ALL}"
+                )
             await asyncio.sleep(2 ** attempt)
         raise Exception("Transaction Hash Not Found After Maximum Retries")
 
@@ -389,7 +393,10 @@ class Brokex:
             except TransactionNotFound:
                 pass
             except Exception as e:
-                pass
+                self.log(
+                    f"{Fore.CYAN + Style.BRIGHT}   Message :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW + Style.BRIGHT} [Attempt {attempt + 1}] Wait for Receipt Error: {str(e)} {Style.RESET_ALL}"
+                )
             await asyncio.sleep(2 ** attempt)
         raise Exception("Transaction Receipt Not Found After Maximum Retries")
         
@@ -397,7 +404,7 @@ class Brokex:
         try:
             web3 = await self.get_web3_with_check(address, use_proxy)
 
-            contract_address = web3.to_checksum_address(self.CLAIM_ROUTER_ADDRESS)
+            contract_address = web3.to_checksum_address(self.FAUCET_ROUTER_ADDRESS)
             token_contract = web3.eth.contract(address=contract_address, abi=self.ERC20_CONTRACT_ABI)
             claim_data = token_contract.functions.hasClaimed(web3.to_checksum_address(address)).call()
 
@@ -413,7 +420,7 @@ class Brokex:
         try:
             web3 = await self.get_web3_with_check(address, use_proxy)
 
-            contract_address = web3.to_checksum_address(self.CLAIM_ROUTER_ADDRESS)
+            contract_address = web3.to_checksum_address(self.FAUCET_ROUTER_ADDRESS)
             token_contract = web3.eth.contract(address=contract_address, abi=self.ERC20_CONTRACT_ABI)
 
             claim_data = token_contract.functions.claim()
@@ -423,7 +430,7 @@ class Brokex:
             max_fee = max_priority_fee
 
             claim_tx = claim_data.build_transaction({
-                "from": address,
+                "from": web3.to_checksum_address(address),
                 "gas": int(estimated_gas * 1.2),
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
@@ -1391,7 +1398,7 @@ class Brokex:
 
     async def main(self):
         try:
-            with open('accounts.txt', 'r') as file:
+            with open('wallets.txt', 'r') as file:
                 accounts = [line.strip() for line in file if line.strip()]
             
             option, use_proxy_choice, rotate_proxy = self.print_question()
