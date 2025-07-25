@@ -519,6 +519,8 @@ class Brokex:
             
             open_amount = int(self.open_amount * (10 ** decimals))
 
+            await self.approving_token(account, address, self.POOL_ROUTER_ADDRESS, asset_address, open_amount, use_proxy)
+
             await self.approving_token(account, address, self.TRADE_ROUTER_ADDRESS, asset_address, open_amount, use_proxy)
 
             proof = await self.get_proof(address, pair, use_proxy)
