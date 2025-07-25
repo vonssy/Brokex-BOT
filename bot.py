@@ -1398,7 +1398,7 @@ class Brokex:
 
     async def main(self):
         try:
-            with open('wallets.txt', 'r') as file:
+            with open('accounts.txt', 'r') as file:
                 accounts = [line.strip() for line in file if line.strip()]
             
             option, use_proxy_choice, rotate_proxy = self.print_question()
