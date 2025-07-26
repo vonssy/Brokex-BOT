@@ -23,8 +23,7 @@ class Brokex:
             "User-Agent": FakeUserAgent().random
         }
         self.BASE_API = "https://proofcrypto-production.up.railway.app"
-        # self.RPC_URL = "https://testnet.dplabs-internal.com/"
-        self.RPC_URL = "https://api.zan.top/node/v1/pharos/testnet/78595778d1434ec5ae2f39a08fbf3314"
+        self.RPC_URL = "https://testnet.dplabs-internal.com/"
         self.PHRS_CONTRACT_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
         self.USDT_CONTRACT_ADDRESS = "0x78ac5e2d8a78a8b8e6d10c7b7274b03c10c91cef"
         self.FAUCET_ROUTER_ADDRESS = "0x50576285BD33261DEe1aD99BF766CD8249520a58"
