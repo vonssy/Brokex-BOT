@@ -23,7 +23,8 @@ class Brokex:
             "User-Agent": FakeUserAgent().random
         }
         self.BASE_API = "https://proofcrypto-production.up.railway.app"
-        self.RPC_URL = "https://api.zan.top/node/v1/pharos/testnet/54b49326c9f44b6e8730dc5dd4348421"
+        # self.RPC_URL = "https://testnet.dplabs-internal.com/"
+        self.RPC_URL = "https://api.zan.top/node/v1/pharos/testnet/78595778d1434ec5ae2f39a08fbf3314"
         self.PHRS_CONTRACT_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
         self.USDT_CONTRACT_ADDRESS = "0x78ac5e2d8a78a8b8e6d10c7b7274b03c10c91cef"
         self.FAUCET_ROUTER_ADDRESS = "0x50576285BD33261DEe1aD99BF766CD8249520a58"
@@ -139,6 +140,12 @@ class Brokex:
             { "name": "ETH_USDT", "desimal": 1 },
             { "name": "SOL_USDT", "desimal": 10 },
             { "name": "XRP_USDT", "desimal": 14 },
+            { "name": "AVAX_USDT", "desimal": 5 },
+            # { "name": "DOGE_USDT", "desimal": 3 },
+            { "name": "TRX_USDT", "desimal": 15 },
+            { "name": "ADA_USDT", "desimal": 16 },
+            { "name": "SUI_USDT", "desimal": 90 },
+            { "name": "LINK_USDT", "desimal": 2 },
         ]
         self.proxies = []
         self.proxy_index = 0
@@ -1226,10 +1233,11 @@ class Brokex:
             size = open_data["sizeUsd"]
 
             name = (
-                "BTC_USDT" if pair == 0 else 
-                "ETH_USDT" if pair == 1 else 
-                "SOL_USDT" if pair == 10 else 
-                "XRP_USDT" if pair == 14 else 
+                "BTC_USDT" if pair == 0 else "ETH_USDT" if pair == 1 else 
+                "SOL_USDT" if pair == 10 else "XRP_USDT" if pair == 14 else 
+                "AVAX_USDT" if pair == 5 else "DOGE_USDT" if pair == 3 else 
+                "TRX_USDT" if pair == 15 else "ADA_USDT" if pair == 16 else 
+                "SUI_USDT" if pair == 90 else "LINK_USDT" if pair == 2 else 
                 "NaN_USDT"
             )
             formatted_size = size / 10**6
