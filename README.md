@@ -1,84 +1,98 @@
-# Brokex Protocol BOT
-Brokex Protocol BOT
+# Brokex Protocol Auto BOT
 
-- Register Here : [Brokex Protocol](https://app.brokex.trade/)
-- Connect Same Wallet With Pharos
-- Claim [Faucet](https://brokex.trade/faucet)
+
+"This is an automated bot for interacting with the Brokex Protocol on the Pharos testnet. The bot provides functionality to claim faucet tokens, open and close positions with leverage, and manage liquidity pools.
 
 ## Features
 
-  - Auto Get Account Information
-  - Auto Run With [Proxyscrape Free Proxy](https://proxyscrape.com/free-proxy-list) - `Choose 1`
-  - Auto Run With Private Proxy - `Choose 2`
-  - Auto Run Without Proxy - `Choose 3`
-  - Auto Claim USDT Faucet
-  - Auto Make Random Trade Tx
-  - Auto Make Deposit Liquidity Tx
-  - Auto Make Withdraw Liquidity Tx
-  - Multi Accounts
+- 🚰 **Claim Faucet**: Claim testnet USDT tokens
+- 📊 **Open Positions**: Trade with leverage (1x, 2x, 5x, 10x)
+- 🔒 **Close Positions**: Automatically close open positions
+- 💧 **Liquidity Management**: Deposit and withdraw from liquidity pools
+- 🔄 **Proxy Support**: Rotate proxies for improved reliability
+- ⏱️ **Randomized Delays**: Avoid detection with configurable delays
+- 📊 **Real-time Logging**: Color-coded terminal output with timestamps
 
-## Requiremnets
+## Installation
 
-- Make sure you have Python3.9 or higher installed and pip.
+1. Clone the repository:
+```bash
+git clone https://github.com/dicoderin/Brokex-BOT.git
+cd brokex-bot
+```
 
-## Instalation
+2. Install required dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-1. **Clone The Repositories:**
-   ```bash
-   git clone https://github.com/vonssy/Brokex-BOT.git
-   ```
-   ```bash
-   cd Brokex-BOT
-   ```
-
-2. **Install Requirements:**
-   ```bash
-   pip install -r requirements.txt #or pip3 install -r requirements.txt
-   ```
-
-### Note: Check your web3 and eth-account library version first. If not same with version in requirements.txt, u must uninstall that library.
-- **Check Library Version**
-  ```bash
-    pip show libary_name
-  ```
-- **Uninstall Library**
-  ```bash
-    pip uninstall libary_name
-  ```
-- **Install Library With Version**
-  ```bash
-    pip install libary_name==version
-  ```
+3. Create necessary files:
+```bash
+touch accounts.txt proxy.txt
+```
 
 ## Configuration
 
-- **accounts.txt:** You will find the file `accounts.txt` inside the project directory. Make sure `accounts.txt` contains data that matches the format expected by the script. Here are examples of file formats:
-  ```bash
-    your_private_key_1
-    your_private_key_2
-  ```
-
-- **proxy.txt:** You will find the file `proxy.txt` inside the project directory. Make sure `proxy.txt` contains data that matches the format expected by the script. Here are examples of file formats:
-  ```bash
-    ip:port # Default Protcol HTTP.
-    protocol://ip:port
-    protocol://user:pass@ip:port
-  ```
-
-## Run
-
-```bash
-python bot.py #or python3 bot.py
+### accounts.txt
+Add your private keys (one per line):
+```
+0xYourPrivateKey1
+0xYourPrivateKey2
+...
 ```
 
-## Buy Me a Coffee
+### proxy.txt (optional)
+Add your proxies (one per line):
+```
+http://user:pass@ip:port
+socks5://user:pass@ip:port
+...
+```
 
-- **EVM:** 0xe3c9ef9a39e9eb0582e5b147026cae524338521a
-- **TON:** UQBEFv58DC4FUrGqinBB5PAQS7TzXSm5c1Fn6nkiet8kmehB
-- **SOL:** E1xkaJYmAFEj28NPHKhjbf7GcvfdjKdvXju8d8AeSunf
-- **SUI:** 0xa03726ecbbe00b31df6a61d7a59d02a7eedc39fe269532ceab97852a04cf3347
+## Usage
 
-Thank you for visiting this repository, don't forget to contribute in the form of follows and stars.
-If you have questions, find an issue, or have suggestions for improvement, feel free to contact me or open an *issue* in this GitHub repository.
+Run the bot:
+```bash
+python brokex_bot.py
+```
 
-**vonssy**
+### Menu Options
+1. **Claim Faucet** - Claim testnet USDT tokens
+2. **Open Position** - Open leveraged trading positions
+   - Set position count per wallet
+   - Set position amount (min 10 USDT)
+3. **Close Position** - Close open positions
+4. **Deposit Liquidity** - Add funds to liquidity pool
+5. **Withdraw Liquidity** - Remove funds from liquidity pool
+6. **Run All Features** - Execute all actions sequentially
+
+### Proxy Options
+1. Use free proxies from Proxyscrape
+2. Use private proxies from proxy.txt
+3. Run without proxies
+
+## Supported Pairs
+- BTC/USDT
+- ETH/USDT
+- SOL/USDT
+- XRP/USDT
+- AVAX/USDT
+- TRX/USDT
+- ADA/USDT
+- SUI/USDT
+- LINK/USDT
+
+## Leverage Options
+The bot randomly selects leverage from:
+- 1x
+- 2x
+- 5x
+- 10x
+
+## Disclaimer
+⚠️ **This is experimental software.** Use at your own risk. ⚠️
+
+- Only use testnet accounts
+- Do not use mainnet private keys
+- The developers are not responsible for any losses
+- This bot is for educational purposes only
