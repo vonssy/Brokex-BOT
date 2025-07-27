@@ -923,7 +923,7 @@ class Brokex:
         rotate = False
         if choose in [1, 2]:
             while True:
-                rotate = input(f"{Fore.BLUE + Style.BRIGHT}Rotate Invalid Proxy? [y/n] -> {Style.RESET_ALL}").strip()
+                rotate = input(f"{Fore.BLUE + Style.BRIGHT}Rotate Invalid Proxy? [y/n] -> {Style.RESET_ALL}").strip().lower()
 
                 if rotate in ["y", "n"]:
                     rotate = rotate == "y"
@@ -1018,13 +1018,20 @@ class Brokex:
             )
 
     async def process_perform_open_potition(self, account: str, address: str, pair: int, is_long: bool, use_proxy: bool):
-        tx_hash, block_number = await self.perform_open_potition(account, address, pair, is_long, use_proxy)
+        # ADDED: Random leverage selection from [1,2,5,10]
+        leverage = random.choice([1, 2, 5, 10])
+        
+        tx_hash, block_number = await self.perform_open_potition(account, address, pair, is_long, use_proxy, leverage)
         if tx_hash and block_number:
             explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
 
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
                 f"{Fore.GREEN+Style.BRIGHT} Open Potition Success {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Leverage:{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {leverage}x {Style.RESET_ALL}"
             )
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Block   :{Style.RESET_ALL}"
