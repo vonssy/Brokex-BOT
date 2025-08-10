@@ -22,7 +22,7 @@ class Brokex:
             "Sec-Fetch-Site": "cross-site",
             "User-Agent": FakeUserAgent().random
         }
-        self.BASE_API = "https://proofcrypto-production.up.railway.app"
+        self.BASE_API = "https://proof.brokex.trade"
         self.RPC_URL = "https://testnet.dplabs-internal.com/"
         self.PHRS_CONTRACT_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
         self.USDT_CONTRACT_ADDRESS = "0x78ac5e2d8a78a8b8e6d10c7b7274b03c10c91cef"
