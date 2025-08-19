@@ -18,7 +18,7 @@
 1. Clone the repository:
 ```bash
 git clone https://github.com/dicoderin/Brokex-BOT.git
-cd brokex-bot
+cd Brokex-Bot
 ```
 
 2. Install required dependencies:
@@ -53,7 +53,7 @@ socks5://user:pass@ip:port
 
 Run the bot:
 ```bash
-python brokex_bot.py
+python bot.py
 ```
 
 ### Menu Options
