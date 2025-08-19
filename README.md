@@ -18,7 +18,7 @@
 1. Clone the repository:
 ```bash
 git clone https://github.com/dicoderin/Brokex-BOT.git
-cd Brokex-Bot
+cd Brokex-BOT
 ```
 
 2. Install required dependencies:
