@@ -6,7 +6,7 @@
 ## Features
 
 - 🚰 **Claim Faucet**: Claim testnet USDT tokens
-- 📊 **Open Positions**: Trade with Long/Short & leverage (1x, 2x, 5x, 10x)
+- 📊 **Open Positions**: Trade with Long/Short & select leverage 1-50
 - 🔒 **Close Positions**: Automatically close open positions
 - 💧 **Liquidity Management**: Deposit and withdraw from liquidity pools
 - 🔄 **Proxy Support**: Rotate proxies for improved reliability
