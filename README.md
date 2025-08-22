@@ -87,7 +87,7 @@ The bot randomly selects leverage from:
 - 1x
 - 2x
 - 5x
-- 10x
+- 10x Up to 50x
 
 ## Disclaimer
 ⚠️ **This is experimental software.** Use at your own risk. ⚠️
