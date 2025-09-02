@@ -8,15 +8,20 @@ Brokex Protocol BOT
 ## Features
 
   - Auto Get Account Information
-  - Auto Run With [Proxyscrape Free Proxy](https://proxyscrape.com/free-proxy-list) - `Choose 1`
-  - Auto Run With Private Proxy - `Choose 2`
-  - Auto Run Without Proxy - `Choose 3`
+  - Auto Run With Private Proxy - `Choose 1`
+  - Auto Run Without Proxy - `Choose 2`
   - Auto Claim USDT Faucet
   - Auto Make Random Open Potition
   - Auto Make Random Close Potition
   - Auto Make Deposit Liquidity
   - Auto Make Withdraw Liquidity
   - Multi Accounts
+
+If you need a reliable proxy for multi-wallet automation, airdrop farming, or avoiding geo-restrictions, I recommend **Nstproxy**.  
+Affordable (from $0.1/GB), global coverage, rotation control, and anti-ban tech.
+
+🔗 [Nstproxy.com](https://www.nstproxy.com/?utm_source=vonssy) | [Telegram](https://t.me/nstproxy) | [Discord](https://discord.gg/5jjWCAmvng) | [Github](https://github.com/Nstproxy)  
+👉 Use code **VONSSY** to get **10% OFF**
 
 ## Requiremnets
 
